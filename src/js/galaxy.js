@@ -1,4 +1,4 @@
-var romanDictionary = {
+romanDictionary = {
   "I": 1,
   "V": 5,
   "X": 10,
@@ -6,6 +6,17 @@ var romanDictionary = {
   "C": 100,
   "D": 500,
   "M": 1000,
+};
+
+var outsiderDictionary = {};
+
+var canRepeatUpToThree = ["I", "X", "C", "M"];
+var canNotRepeat = ["D", "L", "V"];
+var canNotSubtract = ["V", "L", "D"];
+var subtractDictionary = {
+  "I": ["V", "X"],
+  "X": ["L", "C"],
+  "C": ["D", "M"],
 };
 
 var multiplyList;
@@ -55,7 +66,8 @@ function buildDictionary(instructions) {
     var splittedInstruction = instruction.split(" is ");
     var symbols = splittedInstruction[1].split(" ");
     if (symbols.length === 1) {
-      dictionary[splittedInstruction[0]] = romanDictionary[splittedInstruction[1]];
+      dictionary[splittedInstruction[0]] = Constants.romanDictionary[splittedInstruction[1]];
+      outsiderDictionary[splittedInstruction[0]] = splittedInstruction[1];
     } else if (symbols.length === 2) {
       calculateValue(dictionary, splittedInstruction[0].split(" "), symbols[0]);
     }
@@ -68,10 +80,12 @@ function calculateValue(dictionary, symbols, result) {
   var frequencyMap = {};
   var accumulatedValue = dictionary[symbols[0]];
   for (var i = 0; i < symbols.length - 1; i++) {
+    addFrequency(frequencyMap, symbols[i], symbols[i + 1]);
+    validateFrequency(frequencyMap, symbols[i]);
     var currentValue = accumulatedValue;
     var nextValue = dictionary[symbols[i + 1]];
     if (nextValue) {
-      accumulatedValue = calculateAccumulatedValue(currentValue, nextValue);
+      accumulatedValue = calculateAccumulatedValue(symbols[i], symbols[i + 1], currentValue, nextValue);
     } else {
       var keyToAdd = symbols[i + 1];
       if (keyToAdd[0] === keyToAdd[0].toUpperCase()) {
@@ -82,9 +96,36 @@ function calculateValue(dictionary, symbols, result) {
   }
 }
 
-function calculateAccumulatedValue(currentValue, nextValue) {
+function addFrequency(frequencyMap, current, next) {
+  if (current === next) {
+    if (!frequencyMap[current]) {
+      frequencyMap[current] = 1;
+    } else {
+      frequencyMap[current] += 1;
+    }
+  }
+}
+
+function validateFrequency(frequencyMap, symbol) {
+  if (canNotRepeat.includes(outsiderDictionary[symbol]) && frequencyMap[symbol] > 1) {
+    throw new Error("Invalid sequence: input with more than 1 " + symbol + " in sequence");
+  }
+  if (canRepeatUpToThree.includes(outsiderDictionary[symbol]) && frequencyMap[symbol] > 3) {
+    throw new Error("Invalid sequence: input with more than 3 " + symbol + " in sequence");
+  }
+}
+
+function canSubtract(currentKey, nextKey) {
+  return subtractDictionary[outsiderDictionary[currentKey]].includes(outsiderDictionary[nextKey]);
+}
+
+function calculateAccumulatedValue(currentKey, nextKey, currentValue, nextValue) {
   if (nextValue > currentValue) {
-    return nextValue - currentValue;
+    if (canSubtract(currentKey, nextKey)) {
+      return nextValue - currentValue;
+    } else {
+      throw new Error("Invalid operation: " + currentKey + " can not be subtracted from " + nextKey);
+    }
   } else {
     return nextValue + currentValue;
   }
@@ -112,19 +153,26 @@ function calculateAnswer(dictionary, question) {
     if (!nextValue) {
       return symbols.join(" ") + " is " + currentValue + " Credits";
     }
-    var multiply = multiplyList.includes(symbols[i]) || multiplyList.includes(symbols[i + 1]);
-    result = calculateResult(currentValue, nextValue, multiply);
+    try {
+      result = calculateResult(symbols[i], symbols[i + 1], currentValue, nextValue);
+    } catch (ex) {
+      return ex.message;
+    }
   }
   return symbols.join(" ") + " is " + result + " Credits";
 }
 
-function calculateResult(currentValue, nextValue, multiply) {
-  if (multiply) {
+function calculateResult(currentKey, nextKey, currentValue, nextValue) {
+  if (multiplyList.includes(currentKey) || multiplyList.includes(nextKey)) {
     return currentValue * nextValue;
   } else if (currentValue >= nextValue) {
     return currentValue + nextValue;
   } else {
-    return nextValue - currentValue;
+    if (canSubtract(currentKey, nextKey)) {
+      return nextValue - currentValue;
+    } else {
+      throw new Error("Invalid operation: " + currentKey + " can not be subtracted from " + nextKey);
+    }
   }
 }
 
