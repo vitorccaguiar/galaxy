@@ -8,10 +8,11 @@ var romanDictionary = {
   "M": 1000,
 };
 
-var multiplyList = ["Silver", "Gold", "Iron"];
+var multiplyList;
 
 function startProcess() {
-  var input = document.getElementById("input").innerHTML;
+  multiplyList = [];
+  var input = document.getElementById("input").value;
   var processedInput = processInput(input);
 
   var dictionary = buildDictionary(processedInput.instructions);
@@ -19,7 +20,7 @@ function startProcess() {
   for (question of processedInput.questions) {
     answers = answers.concat(calculateAnswer(dictionary, question) + '\n');
   }
-  document.getElementById("output").innerHTML = answers;
+  document.getElementById("output").value = answers;
 }
 
 function processInput(input) {
@@ -64,14 +65,18 @@ function buildDictionary(instructions) {
 }
 
 function calculateValue(dictionary, symbols, result) {
-  var accumulatedValue = 0;
-  for (var i = 0; i < symbols.length; i++) {
-    var currentValue = i === 0 ? dictionary[symbols[i]] : accumulatedValue;
+  var frequencyMap = {};
+  var accumulatedValue = dictionary[symbols[0]];
+  for (var i = 0; i < symbols.length - 1; i++) {
+    var currentValue = accumulatedValue;
     var nextValue = dictionary[symbols[i + 1]];
     if (nextValue) {
       accumulatedValue = calculateAccumulatedValue(currentValue, nextValue);
     } else {
       var keyToAdd = symbols[i + 1];
+      if (keyToAdd[0] === keyToAdd[0].toUpperCase()) {
+        multiplyList.push(keyToAdd);
+      }
       dictionary[keyToAdd] = calculateValueToAdd(keyToAdd, accumulatedValue, result);;
     }
   }
@@ -100,12 +105,12 @@ function calculateAnswer(dictionary, question) {
     return "I have no idea what you are talking about";
   }
 
-  var result = 0;
+  var result = dictionary[symbols[0]];
   for (var i = 0; i < symbols.length - 1; i++) {
-    var currentValue = i === 0 ? dictionary[symbols[i]] : result;
+    var currentValue = result;
     var nextValue = dictionary[symbols[i + 1]];
-    if (!currentValue || !nextValue) {
-      return "I have no idea what you are talking about";
+    if (!nextValue) {
+      return symbols.join(" ") + " is " + currentValue + " Credits";
     }
     var multiply = multiplyList.includes(symbols[i]) || multiplyList.includes(symbols[i + 1]);
     result = calculateResult(currentValue, nextValue, multiply);
