@@ -26,12 +26,16 @@ function startProcess() {
   var input = document.getElementById("input").value;
   var processedInput = processInput(input);
 
-  var dictionary = buildDictionary(processedInput.instructions);
-  var answers = '';
-  for (question of processedInput.questions) {
-    answers = answers.concat(calculateAnswer(dictionary, question) + '\n');
+  try {
+    var dictionary = buildDictionary(processedInput.instructions);
+    var answers = '';
+    for (question of processedInput.questions) {
+      answers = answers.concat(calculateAnswer(dictionary, question) + '\n');
+    }
+    document.getElementById("output").value = answers;
+  } catch (ex) {
+    document.getElementById("output").value = ex.message;
   }
-  document.getElementById("output").value = answers;
 }
 
 function processInput(input) {
@@ -66,7 +70,7 @@ function buildDictionary(instructions) {
     var splittedInstruction = instruction.split(" is ");
     var symbols = splittedInstruction[1].split(" ");
     if (symbols.length === 1) {
-      dictionary[splittedInstruction[0]] = Constants.romanDictionary[splittedInstruction[1]];
+      dictionary[splittedInstruction[0]] = romanDictionary[splittedInstruction[1]];
       outsiderDictionary[splittedInstruction[0]] = splittedInstruction[1];
     } else if (symbols.length === 2) {
       calculateValue(dictionary, splittedInstruction[0].split(" "), symbols[0]);
@@ -99,9 +103,9 @@ function calculateValue(dictionary, symbols, result) {
 function addFrequency(frequencyMap, current, next) {
   if (current === next) {
     if (!frequencyMap[current]) {
-      frequencyMap[current] = 1;
+      frequencyMap[current] = 2;
     } else {
-      frequencyMap[current] += 1;
+      frequencyMap[current] += 2;
     }
   }
 }
@@ -116,16 +120,13 @@ function validateFrequency(frequencyMap, symbol) {
 }
 
 function canSubtract(currentKey, nextKey) {
-  return subtractDictionary[outsiderDictionary[currentKey]].includes(outsiderDictionary[nextKey]);
+  return subtractDictionary[outsiderDictionary[currentKey]].includes(outsiderDictionary[nextKey])
+    && !canNotSubtract.includes(outsiderDictionary[currentKey]);
 }
 
 function calculateAccumulatedValue(currentKey, nextKey, currentValue, nextValue) {
   if (nextValue > currentValue) {
-    if (canSubtract(currentKey, nextKey)) {
-      return nextValue - currentValue;
-    } else {
-      throw new Error("Invalid operation: " + currentKey + " can not be subtracted from " + nextKey);
-    }
+    return nextValue - currentValue;
   } else {
     return nextValue + currentValue;
   }
